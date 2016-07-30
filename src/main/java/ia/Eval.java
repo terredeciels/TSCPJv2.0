@@ -2,15 +2,16 @@ package ia;
 
 import tscp.Board;
 
+import static java.lang.Integer.MIN_VALUE;
 import static sanutils.SANUtils.getFile;
 import static sanutils.SANUtils.getRank;
+import static tscp.Constants.*;
 
 /**
  * Fonction d'évaluation : matériel et la position des pièces
  */
-public class Eval {
+class Eval {
 
-    int MAT_VALUE = Integer.MIN_VALUE / 2;
     /**
      * Bonus/Malus d'un cavalier (blanc par défaut) en fonction de sa position.
      */
@@ -66,34 +67,37 @@ public class Eval {
         assert DEFAULT_POSITIONS.length == 64;
     }
 
-    public Eval() {
+    Eval() {
     }
 
-    public int evaluate(final Board gp, final int trait) {
-        boolean pTrait = trait == BLANC;
+    int evaluate(final Board board, final int trait) {
+        boolean pTrait = trait == LIGHT;
 
-        int res = -gp.getHalfmoveCount();
+        int res = -board.getHalfmoveCount();
 
-        for (int _case : CASES117) {
-            int piece = gp.getEtats()[_case];
-            if (piece != VIDE) {
-                boolean traitPiece = isWhite(piece);
-                int typePiece = typeDePiece(piece);
+        //for (int _case : CASES117) {
+            for(int _case=0;_case<64;_case++){
+            int typePiece = board.piece[_case];
+                int color = board.color[_case];
+
+            if (color != EMPTY) {
+                boolean traitPiece = color==LIGHT;
                 int val = valueType(typePiece);
                 int pos;
                 switch (typePiece) {
-                    case FOU:
-                    case DAME:
-                    case TOUR:
-                        pos = DEFAULT_POSITIONS[getIndex(_case)];
+                    case BISHOP:
+                    case QUEEN:
+                    case ROOK:
+                        pos = DEFAULT_POSITIONS[_case];
+                        //symétrique : adapté aux deux couleurs
                         break;
-                    case ROI:
-                        int _trait = traitPiece ? BLANC : NOIR;
+                    case KING:
+                        int _trait = traitPiece ? LIGHT : DARK;
 
-                        if ((traitPiece != pTrait) && (gp.getFullmoveNumber() > 10) && gp.isInCheck(_trait)) {
-                            if (gp.getCoupsValides(_trait).isEmpty()) {
+                        if ((traitPiece != pTrait) && (board.getFullmoveNumber() > 10) && board.in_check(_trait)) {
+                            if (board.gen(board,_trait).isEmpty()) {
                                 // Malus pour un mat...
-                                pos = MAT_VALUE;
+                                pos = MIN_VALUE / 2;
                             } else {
                                 // Malus pour un échec...
                                 pos = -250;
@@ -103,16 +107,18 @@ public class Eval {
                             pos = 0;
                         }
                         break;
-                    case CAVALIER:
+                    case KNIGHT:
                         if (traitPiece) {
-                            pos = KNIGHT_POSITIONS[getIndex(_case)];
+                            _case = 56 - 8 * getRank(_case) + getFile(_case);
+                            pos = KNIGHT_POSITIONS[_case];
                         } else {
                             pos = KNIGHT_POSITIONS[((8 - 1) - getRank(_case)) * 8 + getFile(_case)];
                         }
                         break;
-                    case PION:
+                    case PAWN:
                         if (traitPiece) {
-                            pos = PAWN_POSITIONS[getIndex(_case)];
+                            _case = 56 - 8 * getRank(_case) + getFile(_case);
+                            pos = PAWN_POSITIONS[_case];
                         } else {
                             pos = PAWN_POSITIONS[((8 - 1) - getRank(_case)) * 8 + getFile(_case)];
                         }
@@ -132,21 +138,24 @@ public class Eval {
         return res;
     }
 
-    private boolean isWhite(int piece) {
-        return piece < 0;
-    }
-
-    private int typeDePiece(int piece) {
-        return (piece < 0) ? -piece : piece;
-    }
-
     private int valueType(int piece) {
-        int type_de_piece = (piece < 0) ? -piece : piece;
-        return PieceType.getValue(type_de_piece);
+        switch (piece) {
+            case PAWN:
+                return 100;
+            case ROOK:
+                return 550;
+            case BISHOP:
+                return 350;
+            case KNIGHT:
+                return 300;
+            case QUEEN:
+                return 1000;
+            case KING:
+                return 0;
+            default:
+                return 0;//error
+        }
 
     }
 
-    private int getIndex(int _case) {
-        return INDICECASES[_case];
-    }
 }

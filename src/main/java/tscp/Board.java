@@ -14,6 +14,8 @@ public class Board implements Constants {
     public List<Move> pseudomoves = new ArrayList<>();
     private int fifty;
     private UndoMove um = new UndoMove();
+    public int _fullmoveNumber;
+    private int _halfmoveCount;
 
     public Board() {
     }
@@ -30,7 +32,7 @@ public class Board implements Constants {
         um = new UndoMove();
     }
 
-    private boolean in_check(int s) {
+    public boolean in_check(int s) {
         for (int i = 0; i < 64; ++i)
             if (piece[i] == KING && color[i] == s) return attack(i, s ^ 1);
         return true; // shouldn't get here
@@ -78,7 +80,20 @@ public class Board implements Constants {
         }
         return false;
     }
-
+    public List<Move> gen(Board board, int trait){
+        board.side=trait;
+        board.xside = board.side==0 ? 1:0;
+        List<Move> vmoves =new ArrayList<>();
+        board.gen();
+        List<Move> moves = board.pseudomoves;
+        for (Move move : moves) {
+            if (board.makemove(move)) {
+                vmoves.add(move);
+                board.takeback();
+            }
+        }
+        return vmoves;
+    }
     public void gen() {
         int i;
         int j;
@@ -356,5 +371,14 @@ public class Board implements Constants {
             }
         }
     }
+
+    public int getHalfmoveCount() {
+        return _halfmoveCount;
+    }
+
+    public int getFullmoveNumber() {
+        return _fullmoveNumber;
+    }
+
 
 }

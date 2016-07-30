@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import static tscp.Constants.*;
+
 public class SANUtils {
 
     /**
@@ -39,38 +41,46 @@ public class SANUtils {
             throw new SANException("Invalid SAN string [" + pSAN + ']', null);
         }
 
-       final boolean trait = gPosition.getTrait() == BLANC;
+       final boolean trait = gPosition.side == LIGHT;
         if ("0-0".equals(pSAN)) {
             // Gère les petits roques...
             if (trait) {
-                return new GCoups(ROI, e1, g1, h1, f1, 0, Roque);
-
+                //return new GCoups(ROI, e1, g1, h1, f1, 0, Roque);
+                return new Move((byte) E1,(byte) G1,(byte)0,(byte)2);
             }
-            return new GCoups(ROI, e8, g8, h8, f8, 0, Roque);
+            //return new GCoups(ROI, e8, g8, h8, f8, 0, Roque);
+            return new Move((byte) E8,(byte) G8,(byte)0,(byte)2);
            // return new GCoups(ROI, e1, c1, a1, d1, 0, ICodage.TYPE_DE_COUPS.Roque);
         } else if ("0-0-0".equals(pSAN)) {
             // ... les grands roques...
             if (trait) {
-                return new GCoups(ROI, e1, c1, a1, d1, 0, Roque);
+                //return new GCoups(ROI, e1, c1, a1, d1, 0, Roque);
+                return new Move((byte) E1,(byte) C1,(byte)0,(byte)2);
             }
-            return new GCoups(ROI, e8, c8, a8, d8, 0, Roque);
+            //return new GCoups(ROI, e8, c8, a8, d8, 0, Roque);
+            return new Move((byte) E8,(byte) C8,(byte)0,(byte)2);
             //return new GCoups(ROI, e8, g8, h8, f8, 0, ICodage.TYPE_DE_COUPS.Roque);
         }
 
         // Gère les coups normaux...
         final int piece;
+        final int color;
         int posSrc = 0;
         char c = pSAN.charAt(posSrc);
         if (Character.isLowerCase(c)) {
             if (trait) {
-                piece = BLANC * PION;
+                piece = PAWN;
+                color=LIGHT;
             } else {
-                piece = NOIR * PION;
+                piece = PAWN;
+                color=DARK;
             }
         } else {
             if (trait) {
+                color = Character.isLowerCase(c) ? DARK : LIGHT;
                 piece = valueOf(c);
             } else {
+                color = Character.isLowerCase(c) ? DARK : LIGHT;
                 piece = valueOf(Character.toLowerCase(c));
             }
             posSrc++;
@@ -78,13 +88,15 @@ public class SANUtils {
 
         final boolean prise = pSAN.indexOf('x') >= 0;
 //        final List<GCoups> mvts = new ArrayList<>(gPosition.getCoupsValides());
-        final List<Move> mvts = gPosition.getCoupsValides();
+        final List<Move> mvts = gPosition.gen(gPosition,gPosition.side);
+
 //         System.out.println("gPosition83= " + gPosition.print());
 //        System.out.println("mvts83= " + mvts);
         for (int i = mvts.size() - 1; i >= 0; i--) {
             final Move m = mvts.get(i);
-            final boolean capture = m.getPiecePrise() != 0;
-            if ((piece != m.getPiece()) || (prise != capture)) {
+            int piececapt = gPosition.piece[m.to];
+            final boolean capture = piececapt != 0;
+            if ((piece != piececapt) || (prise != capture)) {
                 mvts.remove(i);
             }
         }
@@ -96,7 +108,7 @@ public class SANUtils {
         final int dst = valueOf(pSAN.substring(posDst - 1, posDst + 1));
         for (int i = mvts.size() - 1; i >= 0; i--) {
             final Move m = mvts.get(i);
-            if (dst != m.getCaseX()) {
+            if (dst != m.to) {
                 mvts.remove(i);
             }
         }
@@ -104,8 +116,8 @@ public class SANUtils {
             return mvts.get(0);
         }
 
-        if ((mvts.size() > 1) && (((piece == NOIR * PION) && (getRank(dst) == 0))
-                || ((piece == BLANC * PION) && (getRank(dst) == 7)))) {
+        if ((mvts.size() > 1) && (((piece == PAWN)&&(color == DARK) && (getRank(dst) == 0))
+                || ((piece == PAWN)&&(color == LIGHT) && (getRank(dst) == 7)))) {
             // Supprime les ambiguités dues aux promotions...
             posDst = pSAN.length() - 1;
             while ((posDst > 0) && ("BNQR".indexOf(pSAN.charAt(posDst)) < 0)) {
@@ -114,7 +126,7 @@ public class SANUtils {
             if (posDst > 0) {
                 c = pSAN.charAt(posDst);
                 for (int i = mvts.size() - 1; i >= 0; i--) {
-                    final int prom = mvts.get(i).getPiecePromotion();
+                    final int prom = mvts.get(i).promote;
                     int t = Math.abs(prom);
                     if ((prom == 0)
                             //                            || (prom.getType().getSANLetter().charAt(0) != c)) {
@@ -124,7 +136,7 @@ public class SANUtils {
                 }
             } else {
                 for (int i = mvts.size() - 1; i >= 0; i--) {
-                    if (mvts.get(i).getPiecePromotion() != 0) {
+                    if (mvts.get(i).promote != 0) {
                         mvts.remove(i);
                     }
                 }
@@ -138,7 +150,7 @@ public class SANUtils {
                 final int col = c - 'a';
                 for (int i = mvts.size() - 1; i >= 0; i--) {
                     final Move m = mvts.get(i);
-                    if (col != getFile(m.getCaseO())) {
+                    if (col != getFile(m.from)) {
                         mvts.remove(i);
                     }
                 }
@@ -151,7 +163,7 @@ public class SANUtils {
                 final int lig = c - '1';
                 for (int i = mvts.size() - 1; i >= 0; i--) {
                     final Move m = mvts.get(i);
-                    if (lig != getRank(m.getCaseO())) {
+                    if (lig != getRank(m.from)) {
                         mvts.remove(i);
                     }
                 }
@@ -188,23 +200,23 @@ public class SANUtils {
             throw new IllegalArgumentException("Illegal rank [" + pLigne + ']');
         }
 
-        return CASES117[pColonne + pLigne * 8];
+        return pColonne + pLigne * 8;
     }
 
     private static int valueOf(char c) {
-        int color = Character.isLowerCase(c) ? NOIR : BLANC;
+        //int color = Character.isLowerCase(c) ? DARK : LIGHT;
         char t = Character.toLowerCase(c);
         switch (t) {
             case 'k':
-                return color * ROI;
+                return KING;
             case 'q':
-                return color * DAME;
+                return QUEEN;
             case 'b':
-                return color * FOU;
+                return BISHOP;
             case 'n':
-                return color * CAVALIER;
+                return KNIGHT;
             case 'r':
-                return color * TOUR;
+                return ROOK;
             default:
                 return 0; //erreur
         }
@@ -226,21 +238,21 @@ public class SANUtils {
             throw new NullPointerException("Missing move");
         }
 
-        final boolean trait = gPosition.getTrait() == BLANC;
-        final int piece = pMouvement.getPiece();
+        final boolean trait = gPosition.side == LIGHT;
+        final int piece = gPosition.piece[pMouvement.to];
         final int t = Math.abs(piece);
         final StringBuilder sb = new StringBuilder();
-        final int src = pMouvement.getCaseO();
-        final int dst = pMouvement.getCaseX();
+        final int src = pMouvement.from;
+        final int dst = pMouvement.to;
 
-        UndoGCoups ug = new UndoGCoups();
-        gPosition.exec(pMouvement, ug);
-        final int nbMvts = gPosition.getCoupsValides(-gPosition.getTrait()).size();
-        gPosition.unexec(ug);
+
+        gPosition.makemove(pMouvement);
+        final int nbMvts = gPosition.gen(gPosition,-gPosition.side).size();
+        gPosition.takeback();
 
         final int xSrc = getFile(src);
         final int xDst = getFile(dst);
-        if ((t == ROI) && (Math.abs(xSrc - xDst) > 1)) {
+        if ((t == KING) && (Math.abs(xSrc - xDst) > 1)) {
             // Roques...
             sb.append("0-0");
             if (xSrc > xDst) {
@@ -251,19 +263,20 @@ public class SANUtils {
             sb.append(getSANLetter(t));
 
             // Recherche et levée des éventuelles ambiguités...
-            if (t != PION) {
-                final List<Move> mvts = new ArrayList<>(gPosition.getCoupsValides(gPosition.getTrait()));
+            if (t != PAWN) {
+                final List<Move> mvts = new ArrayList<>(gPosition.gen(gPosition,gPosition.side));
 //                System.out.println(mvts);
                 for (int i = mvts.size() - 1; i >= 0; i--) {
                     final Move m = mvts.get(i);
-                    if ((piece != m.getPiece()) || (dst != m.getCaseX()) || (m.equals(pMouvement))) {
+                    int ppiece = gPosition.piece[m.from];
+                    if ((piece != ppiece) || (dst != m.to) || (m.equals(pMouvement))) {
                         mvts.remove(i);
                     }
                 }
                 boolean preciser = true;
                 for (int i = mvts.size() - 1; i >= 0; i--) {
-                    final GCoups m = mvts.get(i);
-                    if (xSrc != getFile(m.getCaseO())) {
+                    final Move m = mvts.get(i);
+                    if (xSrc != getFile(m.from)) {
                         mvts.remove(i);
                         if (preciser) {
                             sb.append((char) ('a' + xSrc));
@@ -274,16 +287,16 @@ public class SANUtils {
                 final int ySrc = getRank(src);
                 for (int i = mvts.size() - 1; i >= 0; i--) {
                     final Move m = mvts.get(i);
-                    if (ySrc != getRank(m.getCaseO())) {
+                    if (ySrc != getRank(m.from)) {
                         sb.append((char) ('1' + ySrc));
                         break;
                     }
                 }
             }
 
-            if ((gPosition.getEtats()[dst] != 0) || ((dst == gPosition.getCaseEP()) && (t == PION))) {
+            if ((gPosition.color[dst] != EMPTY) || ((dst == gPosition.ep) && (t == PAWN))) {
                 // Prise...
-                if (t == PION) {
+                if (t == PAWN) {
                     sb.append((char) ('a' + xSrc));
                 }
                 sb.append('x');
@@ -291,9 +304,9 @@ public class SANUtils {
 
             sb.append(getFENString(dst));
 
-            if (t == PION) {
+            if (t == PAWN) {
                 // Cas particuliers...
-                if (dst == gPosition.getCaseEP()) {
+                if (dst == gPosition.ep) {
                     // ... de la prise en passant...
                     sb.append(" e.p.");
                 } else {
@@ -303,13 +316,13 @@ public class SANUtils {
                             || ((!trait) && (yDst == 0))) {
                         // Le '=' n'est pas dans la version de SAN de la FIDE :
                         // sb.append('=');
-                        final int promotion = pMouvement.getPiecePromotion();
+                        final int promotion = pMouvement.promote;
                         if (promotion == 0) {
                             assert false;
-                            sb.append(getSANLetter(DAME));
+                            sb.append(getSANLetter(QUEEN));
                         } else {
                             final int promotionType = Math.abs(promotion);
-                            if (promotionType != PION) {
+                            if (promotionType != PAWN) {
                                 sb.append(getSANLetter(promotionType));
                             } else {
                                 assert false;
@@ -320,7 +333,7 @@ public class SANUtils {
             }
         }
 
-        if (gPosition.isInCheck(-gPosition.getTrait())) {
+        if (gPosition.in_check(gPosition.xside)) {
             // Echec / Mat ...
             sb.append('+');
             if (nbMvts == 0) {
@@ -338,15 +351,15 @@ public class SANUtils {
 
     private static String getSANLetter(int t) {
         switch (t) {
-            case ROI:
+            case KING:
                 return "K";
-            case DAME:
+            case QUEEN:
                 return "Q";
-            case FOU:
+            case BISHOP:
                 return "B";
-            case CAVALIER:
+            case KNIGHT:
                 return "N";
-            case TOUR:
+            case ROOK:
                 return "R";
             default:
                 return ""; //erreur

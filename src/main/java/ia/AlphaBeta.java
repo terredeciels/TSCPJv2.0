@@ -4,12 +4,13 @@ import ia.Eval;
 import tscp.Board;
 import tscp.Move;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
 public class AlphaBeta {
 
-    int MAT_VALUE = Integer.MIN_VALUE / 2;
+    private int MAT_VALUE = Integer.MIN_VALUE / 2;
     private final int depth;
     private final Board gp;
     private final Eval f_eval;
@@ -22,12 +23,12 @@ public class AlphaBeta {
 
     private int alphabeta(final Board gp, final int pProfondeur, final int pAlpha, final int pBeta) {
 
-        final int trait = gp.getTrait();
+        final int trait = gp.side;
         if (pProfondeur == 0) {
             return evaluate(gp, trait);
         }
 
-        final List<Move> coups = getValidMoves(gp, trait);
+        final List<Move> coups = gp.gen(gp,trait);
 
         final int l = coups.size();
         if (l == 0) {
@@ -38,10 +39,10 @@ public class AlphaBeta {
         int alpha = pAlpha;
 
         for (final Move mvt : coups) {
-            UndoGCoups ug = new UndoGCoups();
-            gp.exec(mvt, ug);
+
+            gp.makemove(mvt);
             final int note = -alphabeta(gp, pProfondeur - 1, -pBeta, -alpha);
-            gp.unexec(ug);
+            gp.takeback();
 
             if (note > res) {
                 res = note;
@@ -59,7 +60,7 @@ public class AlphaBeta {
 
 
     public Move search() {
-        return searchMoveFor(gp, gp.getCoupsValides());
+        return searchMoveFor(gp, gp.gen(gp,gp.side));
     }
 
     public Move searchMoveFor(final Board gp, final List<Move> pCoups) {
@@ -70,10 +71,9 @@ public class AlphaBeta {
         int alpha = MAT_VALUE - 1;
         for (final Move mvt : pCoups) {
 
-            UndoGCoups ug = new UndoGCoups();
-            gp.exec(mvt, ug);
+            gp.makemove(mvt);// true
             final int note = -alphabeta(gp, depth - 1, MAT_VALUE, -alpha);
-            gp.unexec(ug);
+            gp.takeback();
             if ((note > alpha)) {
                 alpha = note;
                 res = mvt;
@@ -83,11 +83,12 @@ public class AlphaBeta {
     }
 
     private int evaluate(Board gp, int trait) {
+
         return f_eval.evaluate(gp, trait);
     }
 
-    private List<Move> getValidMoves(Board gp, int trait) {
-        return gp.getCoupsValides(trait);
-    }
+
+
+
 
 }

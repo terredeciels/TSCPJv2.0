@@ -101,8 +101,8 @@ public final class XBoardAdapter {
                 System.out.println("Illegal move: " + xbSAN);
             } else {
 
-                UndoGCoups ug = new UndoGCoups();
-                gPosition.exec(mvt, ug);
+
+                gPosition.makemove(mvt);
 
                 gPosition._fullmoveNumber++;
                 game.lastmove = mvt;
@@ -151,8 +151,8 @@ public final class XBoardAdapter {
         Move gcoups_curr = search.getBestMove();
 
         String san = toSAN(gPosition, gcoups_curr);
-        UndoGCoups ug = new UndoGCoups();
-        gPosition.exec(gcoups_curr, ug);
+
+        gPosition.makemove(gcoups_curr);
 
         game.setGPositionMove(gPosition);
         gPosition._fullmoveNumber++;

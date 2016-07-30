@@ -10,15 +10,15 @@ package tscp;
  */
 public class Move {
 
-    byte from;
-    byte to;
-    byte promote;
-    byte bits;
+   public byte from;
+   public byte to;
+   public byte promote;
+   public byte bits;
 
-    Move() {
+   public Move() {
     }
 
-    Move(byte from, byte to, byte promote, byte bits) {
+   public Move(byte from, byte to, byte promote, byte bits) {
         this.from = from;
         this.to = to;
         this.promote = promote;
